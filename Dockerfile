@@ -165,27 +165,43 @@ RUN ls /opt/janus/bin
 
 USER janus
 
-CMD ["/opt/janus/bin/janus-pp-rec", "-h"]
+CMD ["/opt/janus/bin/janus", "-h"]
 
 FROM ubuntu:18.04
 
 ARG JANUS_PP_DEP="\
+  libavcodec-dev \
+  libavformat-dev \
+  libavutil-dev \
   libglib2.0-dev \
+  libjansson-dev \
   "
+
+ENV LIB_DIR="/usr/lib/x86_64-linux-gnu"
+
 COPY --from=builder /opt/janus /opt/janus
 
 RUN \
-  apt-get update && apt-get install -y ${JANUS_PP_DEP} \
-# folder ownership
+  apt-get update && apt-get install -y ${JANUS_PP_DEP} ffmpeg\
+# folder ownershipss
   && /usr/sbin/groupadd -r janus && /usr/sbin/useradd -r -g janus janus \
-  && chown -R janus:janus /opt/janus
-RUN \
-  apt-get install -y libjansson-dev
+  && chown -R janus:janus /opt/janus \
+# cleanup
+  && apt-get -y clean \
+  && apt-get -y autoclean \
+  && apt-get -y autoremove \
+  && rm -rf /usr/share/locale/* \
+  && rm -rf /var/cache/debconf/*-old \
+  && rm -rf /usr/share/doc/* \
+  && rm -rf /var/lib/apt/* 
+# USER janus
 
-RUN \
-  apt-get install -y libavcodec-dev \
-  libavutil-dev \
-  libavformat-dev
-USER janus
 
-CMD ["/opt/janus/bin/janus-pp-rec", "-h"]
+COPY ./audio.mjr ./video.mjr /recording/
+COPY ./process.sh /app/
+
+RUN mkdir /files
+
+CMD ["/app/process.sh"]
+
+#CMD ["ldd", "/opt/janus/bin/janus-pp-rec"]
